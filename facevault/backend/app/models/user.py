@@ -1,8 +1,8 @@
+import uuid
 from sqlalchemy import Column, String, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
-import uuid
 
 
 class User(Base):

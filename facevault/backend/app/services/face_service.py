@@ -2,13 +2,11 @@ from deepface import DeepFace
 import numpy as np
 import cv2
 from typing import Optional, List
-import io
 from app.schemas.face import MatchResult
 
 MODEL_NAME = "Facenet512"
-DETECTOR = "retinaface"
-DISTANCE_METRIC = "cosine"
-CONFIDENCE_THRESHOLD = 0.60
+DETECTOR = "opencv"
+CONFIDENCE_THRESHOLD = 60.0
 
 
 def _bytes_to_cv2(contents: bytes) -> np.ndarray:
@@ -55,13 +53,12 @@ async def recognize_face(
 
         for record in enrolled:
             stored = np.array(record.embedding)
-            # Cosine similarity
             dot = np.dot(query_embedding, stored)
             norm = np.linalg.norm(query_embedding) * np.linalg.norm(stored)
             similarity = float(dot / norm) if norm > 0 else 0.0
-            confidence = round((similarity + 1) / 2 * 100, 2)  # normalize to 0-100
+            confidence = round((similarity + 1) / 2 * 100, 2)
 
-            if confidence >= CONFIDENCE_THRESHOLD * 100:
+            if confidence >= CONFIDENCE_THRESHOLD:
                 results.append(
                     MatchResult(
                         label=record.label,
@@ -76,3 +73,8 @@ async def recognize_face(
 
     except Exception:
         return []
+
+
+async def delete_face_data(face_id: str) -> None:
+    # Placeholder — actual deletion is handled in the route via DB + Cloudinary
+    pass
