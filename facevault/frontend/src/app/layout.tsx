@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import Script from "next/script";
+import ErudaProvider from "@/components/ErudaProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,20 +14,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang="en" data-scroll-behavior="smooth">
         <body>
           {children}
-          {process.env.NODE_ENV === "development" && (
-            <>
-              <Script
-                src="https://cdn.jsdelivr.net/npm/eruda@3.4.1/eruda.min.js"
-                strategy="afterInteractive"
-              />
-              <Script id="eruda-init" strategy="afterInteractive">
-                {`if (typeof eruda !== 'undefined') eruda.init();`}
-              </Script>
-            </>
-          )}
+          <ErudaProvider />
         </body>
       </html>
     </ClerkProvider>
