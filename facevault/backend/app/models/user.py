@@ -1,5 +1,6 @@
 import uuid
 from sqlalchemy import Column, String, DateTime
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -8,7 +9,7 @@ from app.db.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String(36), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    id = Column(UUID(as_uuid=False), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     clerk_id = Column(String(255), unique=True, index=True, nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=True)
