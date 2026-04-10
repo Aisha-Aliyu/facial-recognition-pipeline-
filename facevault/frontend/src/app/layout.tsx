@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import ErudaProvider from "@/components/ErudaProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,7 +16,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <html lang="en" data-scroll-behavior="smooth">
         <body>
           {children}
-          <ErudaProvider />
         </body>
       </html>
     </ClerkProvider>
