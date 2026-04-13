@@ -1,25 +1,12 @@
-import io
-import os
 import logging
 import numpy as np
 import cv2
 from sqlalchemy.orm import Session
 from sklearn.metrics.pairwise import cosine_similarity
-import cloudinary
-import cloudinary.uploader
 
-from app.core.config import get_settings
-from app.models.face import FaceProfile
+from app.models.face import FaceRecord
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
-
-cloudinary.config(
-    cloud_name=settings.cloudinary_cloud_name,
-    api_key=settings.cloudinary_api_key,
-    api_secret=settings.cloudinary_api_secret,
-    secure=True,
-)
 
 _face_app = None
 
@@ -45,100 +32,56 @@ def _bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
     return img
 
 
-def _get_embedding(image_bytes: bytes) -> np.ndarray:
+def enroll_face(image_bytes: bytes) -> list | None:
+    """Extract embedding only. Returns list or None. Routes handle DB and Cloudinary."""
     app = get_face_app()
     img = _bytes_to_cv2(image_bytes)
     faces = app.get(img)
+
     if not faces:
-        raise ValueError("No face detected. Please upload a clear, well-lit frontal face photo.")
+        return None
+
     if len(faces) > 1:
-        raise ValueError(f"{len(faces)} faces detected. Please upload an image with exactly one face.")
-    return faces[0].embedding
+        raise ValueError(
+            f"{len(faces)} faces detected. Please upload an image with exactly one face."
+        )
+
+    return faces[0].embedding.tolist()
 
 
-def enroll_face(image_bytes: bytes, label: str, user_id: str, db: Session) -> dict:
-    label = label.strip()[:100]
-    if not label:
-        raise ValueError("Label / name cannot be empty.")
+def recognize_face(image_bytes: bytes, enrolled: list) -> list:
+    """Compare image against list of FaceRecord ORM objects. Returns ranked matches."""
+    app = get_face_app()
+    img = _bytes_to_cv2(image_bytes)
+    faces = app.get(img)
 
-    embedding = _get_embedding(image_bytes)
+    if not faces:
+        return []
 
-    upload_result = cloudinary.uploader.upload(
-        io.BytesIO(image_bytes),
-        folder=f"facevault/{user_id}",
-        public_id=f"{label.replace(' ', '_')}_{os.urandom(4).hex()}",
-        resource_type="image",
-        overwrite=False,
-        transformation=[
-            {"width": 512, "height": 512, "crop": "fill", "gravity": "face"},
-        ],
-    )
-    image_url = upload_result["secure_url"]
-
-    profile = FaceProfile(
-        user_id=user_id,
-        label=label,
-        embedding=embedding.tolist(),
-        image_url=image_url,
-    )
-    db.add(profile)
-    db.commit()
-    db.refresh(profile)
-
-    logger.info(f"Face enrolled: label={label!r} user={user_id}")
-
-    return {
-        "id": str(profile.id),
-        "label": profile.label,
-        "image_url": profile.image_url,
-        "created_at": profile.created_at.isoformat(),
-        "message": "Face enrolled successfully.",
-    }
-
-
-def recognize_face(image_bytes: bytes, user_id: str, db: Session) -> dict:
-    query_embedding = _get_embedding(image_bytes)
-
-    profiles = (
-        db.query(FaceProfile)
-        .filter(FaceProfile.user_id == user_id)
-        .all()
-    )
-
-    if not profiles:
-        return {
-            "match": None,
-            "message": "No enrolled faces found. Please enroll at least one face first.",
-        }
-
-    best_score = -1.0
-    best_profile = None
-    query_vec = query_embedding.reshape(1, -1).astype(np.float32)
-
-    for profile in profiles:
-        stored_vec = np.array(profile.embedding, dtype=np.float32).reshape(1, -1)
-        score = float(cosine_similarity(stored_vec, query_vec)[0][0])
-        if score > best_score:
-            best_score = score
-            best_profile = profile
+    query_vec = faces[0].embedding.reshape(1, -1).astype(np.float32)
 
     THRESHOLD = 0.40
-    best_label = best_profile.label if best_profile else None
-    logger.info(f"Recognition result: best_score={best_score:.4f} label={best_label!r} user={user_id}")
+    results = []
 
-    if best_score >= THRESHOLD:
-        return {
-            "match": {
-                "id": str(best_profile.id),
-                "label": best_profile.label,
-                "image_url": best_profile.image_url,
-                "confidence": round(best_score * 100, 2),
-            },
-            "message": f"Match found: {best_profile.label}",
-        }
+    for record in enrolled:
+        stored_vec = np.array(record.embedding, dtype=np.float32).reshape(1, -1)
+        score = float(cosine_similarity(stored_vec, query_vec)[0][0])
+        if score >= THRESHOLD:
+            results.append({
+                "id": str(record.id),
+                "label": record.label,
+                "image_url": record.image_url,
+                "confidence": round(score * 100, 2),
+            })
 
-    return {
-        "match": None,
-        "confidence": round(best_score * 100, 2),
-        "message": "No match found. The face does not match any enrolled profile.",
-    }
+    results.sort(key=lambda x: x["confidence"], reverse=True)
+    best_label = results[0]["label"] if results else None
+    logger.info(f"Recognition: best_label={best_label!r} matches={len(results)}")
+    return results
+
+
+def delete_face_data(record: FaceRecord, db: Session) -> None:
+    """Delete FaceRecord from DB. Cloudinary deletion handled in route layer."""
+    db.delete(record)
+    db.commit()
+    logger.info(f"Face record deleted: id={record.id!r} label={record.label!r}")
