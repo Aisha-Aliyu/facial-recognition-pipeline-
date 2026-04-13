@@ -146,10 +146,11 @@ def recognize_face(image_bytes: bytes, user_id: str, db: Session) -> dict:
     # InsightFace buffalo_sc cosine similarity: >0.40 = reliable match
     THRESHOLD = 0.40
 
-    logger.info(
-        f"Recognition result: best_score={best_score:.4f} "
-        f"label={best_profile.label!r if best_profile else None} user={user_id}"
-    )
+     best_label = best_profile.label if best_profile else None
+logger.info(
+    f"Recognition result: best_score={best_score:.4f} label={best_label!r} user={user_id}"
+)
+
 
     if best_score >= THRESHOLD:
         return {
