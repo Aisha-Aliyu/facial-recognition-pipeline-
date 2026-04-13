@@ -143,7 +143,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className="flex items-center gap-3 border-t"
           style={{ borderColor: "var(--gold-border)", padding: "20px" }}
         >
-          <UserButton afterSignOutUrl="/" />
+          <UserButton />
           <div>
             <div className="text-xs" style={{ color: "var(--text-primary)" }}>
               {user?.firstName || "User"}
@@ -165,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}
       >
         <span className="font-display text-lg" style={{ color: "var(--gold)" }}>FaceVault</span>
-        <UserButton afterSignOutUrl="/" />
+        <UserButton />
       </div>
 
       {/* Mobile bottom nav */}
