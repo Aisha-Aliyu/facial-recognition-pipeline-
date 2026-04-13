@@ -1,19 +1,20 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 
 
 class FaceOut(BaseModel):
     id: str
     label: str
-    image_url: Optional[str]
-    created_at: Optional[datetime]
+    image_url: Optional[str] = None
+    created_at: datetime
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
 
 class MatchResult(BaseModel):
+    id: str
     label: str
+    image_url: Optional[str] = None
     confidence: float
-    image_url: Optional[str]
-    face_id: str
