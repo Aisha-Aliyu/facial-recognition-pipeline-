@@ -20,21 +20,15 @@ settings = get_settings()
 
 
 def warmup_model():
-    """Pre-load FaceNet512 so the first real request never times out."""
+    """Pre-load InsightFace ONNX model at startup so first request is instant."""
     try:
-        logger.info("⏳ Warming up DeepFace / FaceNet512 model...")
-        from deepface import DeepFace
-        import numpy as np
-
-        dummy = np.zeros((160, 160, 3), dtype=np.uint8)
-        DeepFace.represent(
-            img_path=dummy,
-            model_name="Facenet512",
-            enforce_detection=False,
-        )
-        logger.info("DeepFace model warm-up complete.")
+        logger.info("Warming up InsightFace model...")
+        from app.services.face_service import get_face_app
+        get_face_app()
+        logger.info("InsightFace warm-up complete.")
     except Exception as e:
-        logger.warning(f" Model warm-up failed: {e}")
+        logger.warning(f"Model warm-up failed (non-fatal): {e}")
+
 
 
 @asynccontextmanager
