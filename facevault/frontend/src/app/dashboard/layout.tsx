@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
 
-  useEffect(() => {
+    useEffect(() => {
     if (!isLoaded || !user) return;
     (async () => {
       try {
@@ -84,6 +84,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       } catch {}
     })();
   }, [isLoaded, user]);
+
+  // Pevents Render cold starts that cause timeouts
+  useEffect(() => {
+    const ping = async () => {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/health`, {
+          method: "GET",
+          cache: "no-store",
+        });
+      } catch {}
+    };
+
+    ping(); 
+    const interval = setInterval(ping, 10 * 60 * 1000); // then every 10 min
+    return () => clearInterval(interval);
+  }, []);
+
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--void)" }}>
