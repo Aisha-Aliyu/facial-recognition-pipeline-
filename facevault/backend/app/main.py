@@ -4,6 +4,9 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
+import asyncio
+import logging
 import os
 
 from app.core.config import get_settings
@@ -12,9 +15,38 @@ from app.db.database import engine, Base
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
-Base.metadata.create_all(bind=engine)
+
+def warmup_model():
+    """Pre-load FaceNet512 so the first real request never times out."""
+    try:
+        logger.info("⏳ Warming up DeepFace / FaceNet512 model...")
+        from deepface import DeepFace
+        import numpy as np
+
+        dummy = np.zeros((160, 160, 3), dtype=np.uint8)
+        DeepFace.represent(
+            img_path=dummy,
+            model_name="Facenet512",
+            enforce_detection=False,
+        )
+        logger.info("DeepFace model warm-up complete.")
+    except Exception as e:
+        logger.warning(f" Model warm-up failed: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── Startup ──────────────────────────────────────────────
+    Base.metadata.create_all(bind=engine)
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, warmup_model)  
+    yield
+    # ── Shutdown ─────────────────────────────────────────────
+    logger.info("FaceVault API shutting down.")
+
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/hour"])
 
@@ -22,6 +54,7 @@ app = FastAPI(
     title="FaceVault API",
     description="Production-grade facial recognition pipeline",
     version="1.0.0",
+    lifespan=lifespan,                                          
     docs_url="/api/docs" if settings.environment == "development" else None,
     redoc_url=None,
 )
@@ -47,4 +80,4 @@ app.include_router(faces.router, prefix="/api/faces", tags=["faces"])
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, log_level="info")
