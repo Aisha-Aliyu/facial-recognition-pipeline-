@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useUser, UserButton } from "@clerk/nextjs";
+import { useUser, useAuth, UserButton } from "@clerk/nextjs";
 import { useEffect } from "react";
 import { syncUser } from "@/lib/api";
 
@@ -68,14 +68,21 @@ const navItems = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
 
   useEffect(() => {
     if (!isLoaded || !user) return;
-    syncUser({
-      clerk_id: user.id,
-      email: user.primaryEmailAddress?.emailAddress || "",
-      full_name: user.fullName || undefined,
-    }).catch(() => {});
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        await syncUser(token, {
+          clerk_id: user.id,
+          email: user.primaryEmailAddress?.emailAddress || "",
+          full_name: user.fullName || undefined,
+        });
+      } catch {}
+    })();
   }, [isLoaded, user]);
 
   return (

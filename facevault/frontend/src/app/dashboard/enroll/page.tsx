@@ -2,12 +2,12 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { enrollFace } from "@/lib/api";
 import Image from "next/image";
 
 export default function EnrollPage() {
-  const { user } = useUser();
+  const { getToken } = useAuth();
   const [label, setLabel] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -31,11 +31,17 @@ export default function EnrollPage() {
   });
 
   const handleSubmit = async () => {
-    if (!user || !file || !label.trim()) return;
+    if (!file || !label.trim()) return;
     setStatus("loading");
     setMessage("");
     try {
-      const result = await enrollFace(user.id, label.trim(), file);
+      const token = await getToken();
+      if (!token) {
+        setStatus("error");
+        setMessage("Session expired. Please sign in again.");
+        return;
+      }
+      const result = await enrollFace(token, label.trim(), file);
       setStatus("success");
       setMessage(`Enrolled successfully: ${result.label}`);
       setFile(null);
@@ -44,15 +50,21 @@ export default function EnrollPage() {
     } catch (err: unknown) {
       setStatus("error");
       const msg =
-        err instanceof Error ? err.message : "Enrollment failed. Make sure the image has a clear face.";
+        err instanceof Error
+          ? err.message
+          : "Enrollment failed. Make sure the image has a clear face.";
       setMessage(msg);
     }
   };
 
   return (
     <div style={{ maxWidth: "640px" }}>
+      {/* Header */}
       <div style={{ marginBottom: "40px" }}>
-        <p className="text-xs tracking-widest uppercase" style={{ color: "var(--gold)" }}>
+        <p
+          className="text-xs tracking-widest uppercase"
+          style={{ color: "var(--gold)" }}
+        >
           Enroll
         </p>
         <h1
@@ -61,8 +73,15 @@ export default function EnrollPage() {
         >
           Add a Face Profile
         </h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginTop: "8px" }}>
-          Upload a clear, well-lit photo. One face per image. FaceNet512 will extract the embedding.
+        <p
+          style={{
+            color: "var(--text-secondary)",
+            fontSize: "0.875rem",
+            marginTop: "8px",
+          }}
+        >
+          Upload a clear, well-lit photo. One face per image. FaceNet512 will
+          extract the embedding.
         </p>
       </div>
 
@@ -70,7 +89,11 @@ export default function EnrollPage() {
       <div style={{ marginBottom: "24px" }}>
         <label
           className="text-xs tracking-widest uppercase"
-          style={{ color: "var(--text-muted)", display: "block", marginBottom: "10px" }}
+          style={{
+            color: "var(--text-muted)",
+            display: "block",
+            marginBottom: "10px",
+          }}
         >
           Label / Name
         </label>
@@ -115,7 +138,12 @@ export default function EnrollPage() {
                 border: "1px solid var(--gold-border)",
               }}
             >
-              <Image src={preview} alt="preview" fill style={{ objectFit: "cover" }} />
+              <Image
+                src={preview}
+                alt="preview"
+                fill
+                style={{ objectFit: "cover" }}
+              />
             </div>
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               {file?.name} · Click or drop to replace
@@ -138,9 +166,14 @@ export default function EnrollPage() {
             </svg>
             <div>
               <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-                {isDragActive ? "Drop the image here" : "Drag and drop or click to upload"}
+                {isDragActive
+                  ? "Drop the image here"
+                  : "Drag and drop or click to upload"}
               </p>
-              <p className="text-xs" style={{ color: "var(--text-muted)", marginTop: "6px" }}>
+              <p
+                className="text-xs"
+                style={{ color: "var(--text-muted)", marginTop: "6px" }}
+              >
                 JPEG, PNG, WebP · Max 5MB · One face
               </p>
             </div>
@@ -148,22 +181,28 @@ export default function EnrollPage() {
         )}
       </div>
 
-      {/* Submit */}
+      {/* Submit button */}
       <button
         onClick={handleSubmit}
         disabled={!file || !label.trim() || status === "loading"}
         className="w-full text-xs tracking-widest uppercase transition-all duration-200"
         style={{
-          background: !file || !label.trim() || status === "loading" ? "var(--muted)" : "var(--gold)",
+          background:
+            !file || !label.trim() || status === "loading"
+              ? "var(--muted)"
+              : "var(--gold)",
           color: "var(--void)",
           fontWeight: 500,
           padding: "16px",
-          cursor: !file || !label.trim() || status === "loading" ? "not-allowed" : "pointer",
+          cursor:
+            !file || !label.trim() || status === "loading"
+              ? "not-allowed"
+              : "pointer",
           border: "none",
           fontFamily: "DM Mono, monospace",
         }}
       >
-        {status === "loading" ? "Extracting Embedding..." : "Enroll Face"}
+        {status === "loading" ? "Extracting Embedding…" : "Enroll Face"}
       </button>
 
       {/* Status message */}
@@ -173,8 +212,13 @@ export default function EnrollPage() {
           style={{
             marginTop: "16px",
             padding: "14px 16px",
-            background: status === "success" ? "rgba(191,162,122,0.1)" : "rgba(180,60,60,0.1)",
-            borderLeft: `2px solid ${status === "success" ? "var(--gold)" : "#b43c3c"}`,
+            background:
+              status === "success"
+                ? "rgba(191,162,122,0.1)"
+                : "rgba(180,60,60,0.1)",
+            borderLeft: `2px solid ${
+              status === "success" ? "var(--gold)" : "#b43c3c"
+            }`,
             color: status === "success" ? "var(--gold)" : "#e07070",
           }}
         >
