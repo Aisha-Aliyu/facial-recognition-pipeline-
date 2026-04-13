@@ -2,29 +2,35 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { useUser } from "@clerk/nextjs";
-import { recognizeFace } from "@/lib/api";
+import { useAuth } from "@clerk/nextjs";
 import Image from "next/image";
+import axios from "axios";
+
+const API = process.env.NEXT_PUBLIC_API_URL;
+
+type Match = {
+  label: string;
+  confidence: number;
+  image_url: string | null;
+  face_id: string;
+};
 
 export default function RecognizePage() {
-  const { user } = useUser();
+  const { getToken } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [result, setResult] = useState<{
-    matched: boolean;
-    confidence: number | null;
-    label: string | null;
-    message: string;
-  } | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const onDrop = useCallback((accepted: File[]) => {
     const f = accepted[0];
     if (!f) return;
     setFile(f);
     setPreview(URL.createObjectURL(f));
-    setResult(null);
+    setMatches([]);
     setStatus("idle");
+    setErrorMsg("");
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -35,21 +41,33 @@ export default function RecognizePage() {
   });
 
   const handleRecognize = async () => {
-    if (!user || !file) return;
+    if (!file) return;
     setStatus("loading");
-    setResult(null);
+    setMatches([]);
+    setErrorMsg("");
     try {
-      const data = await recognizeFace(user.id, file);
-      setStatus("success");
-      setResult(data);
+      const token = await getToken();
+      if (!token) {
+        setStatus("error");
+        setErrorMsg("Session expired. Please sign in again.");
+        return;
+      }
+      const form = new FormData();
+      form.append("file", file);
+      const res = await axios.post<Match[]>(`${API}/api/faces/recognize`, form, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data: Match[] = res.data;
+      if (data.length === 0) {
+        setStatus("error");
+        setErrorMsg("No matches found above threshold.");
+      } else {
+        setStatus("success");
+        setMatches(data);
+      }
     } catch {
       setStatus("error");
-      setResult({
-        matched: false,
-        confidence: null,
-        label: null,
-        message: "Recognition failed. Ensure the image has a clear, visible face.",
-      });
+      setErrorMsg("Recognition failed. Ensure the image has a clear, visible face.");
     }
   };
 
@@ -130,80 +148,92 @@ export default function RecognizePage() {
         {status === "loading" ? "Analyzing..." : "Run Recognition"}
       </button>
 
-      {/* Result */}
-      {result && (
+      {/* Error */}
+      {status === "error" && (
         <div
-          className="border"
           style={{
-            marginTop: "32px",
-            borderColor: result.matched ? "var(--gold)" : "#5a3a3a",
-            background: result.matched ? "var(--gold-dim)" : "rgba(90,30,30,0.15)",
-            padding: "28px",
+            marginTop: "16px",
+            padding: "14px 16px",
+            background: "rgba(90,30,30,0.15)",
+            borderLeft: "2px solid #b43c3c",
+            color: "#e07070",
+            fontSize: "0.8rem",
           }}
         >
-          <div className="flex items-center gap-3" style={{ marginBottom: "20px" }}>
-            <div
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                background: result.matched ? "var(--gold)" : "#b43c3c",
-                flexShrink: 0,
-              }}
-            />
-            <span
-              className="text-xs tracking-widest uppercase"
-              style={{ color: result.matched ? "var(--gold)" : "#e07070" }}
-            >
-              {result.matched ? "Match Found" : "No Match"}
-            </span>
-          </div>
+          {errorMsg}
+        </div>
+      )}
 
-          {result.matched ? (
-            <div className="flex flex-col gap-4">
-              <div>
-                <div className="text-xs tracking-widest uppercase" style={{ color: "var(--text-muted)", marginBottom: "6px" }}>
-                  Identity
+      {/* Results */}
+      {matches.length > 0 && (
+        <div style={{ marginTop: "32px" }}>
+          <div
+            className="text-xs tracking-widest uppercase"
+            style={{ color: "var(--text-muted)", marginBottom: "16px" }}
+          >
+            {matches.length} {matches.length === 1 ? "match" : "matches"} found
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "var(--gold-border)" }}>
+            {matches.map((m, i) => (
+              <div
+                key={m.face_id}
+                style={{
+                  background: "var(--surface)",
+                  padding: "20px 24px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "20px",
+                }}
+              >
+                <div
+                  className="font-display text-2xl"
+                  style={{ color: "var(--gold-dim)", minWidth: "32px" }}
+                >
+                  {i + 1}
                 </div>
-                <div className="font-display text-2xl" style={{ color: "var(--gold)" }}>
-                  {result.label}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs tracking-widest uppercase" style={{ color: "var(--text-muted)", marginBottom: "6px" }}>
-                  Confidence
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+
+                {m.image_url ? (
+                  <div style={{ width: "48px", height: "48px", position: "relative", flexShrink: 0 }}>
+                    <Image
+                      src={m.image_url}
+                      alt={m.label}
+                      fill
+                      style={{ objectFit: "cover", filter: "grayscale(30%)" }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ width: "48px", height: "48px", background: "var(--muted)", border: "1px solid var(--gold-border)", flexShrink: 0 }} />
+                )}
+
+                <div style={{ flex: 1 }}>
+                  <div className="font-display text-xl" style={{ color: "var(--text-primary)" }}>
+                    {m.label}
+                  </div>
                   <div
-                    style={{
-                      flex: 1,
-                      height: "3px",
-                      background: "var(--surface-raised)",
-                      borderRadius: "2px",
-                      overflow: "hidden",
-                    }}
+                    className="text-xs tracking-widest uppercase"
+                    style={{ color: "var(--text-muted)", marginTop: "4px" }}
                   >
+                    Confidence
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <div className="font-display text-2xl" style={{ color: "var(--gold)" }}>
+                    {m.confidence.toFixed(1)}%
+                  </div>
+                  <div style={{ width: "80px", height: "2px", background: "var(--muted)", marginTop: "6px" }}>
                     <div
                       style={{
-                        height: "100%",
-                        width: `${result.confidence ?? 0}%`,
+                        width: `${Math.min(m.confidence, 100)}%`,
+                        height: "2px",
                         background: "var(--gold)",
-                        borderRadius: "2px",
-                        transition: "width 0.6s ease",
                       }}
                     />
                   </div>
-                  <span className="font-display text-lg" style={{ color: "var(--gold)" }}>
-                    {result.confidence?.toFixed(1)}%
-                  </span>
                 </div>
               </div>
-            </div>
-          ) : (
-            <p className="text-sm" style={{ color: "#e07070" }}>
-              {result.message}
-            </p>
-          )}
+            ))}
+          </div>
         </div>
       )}
     </div>

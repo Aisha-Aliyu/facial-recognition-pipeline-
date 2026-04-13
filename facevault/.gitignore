@@ -56,7 +56,6 @@ Thumbs.db
 *.swo
 
 # Logs
-logs/
 *.log
 pids/
 *.pid
