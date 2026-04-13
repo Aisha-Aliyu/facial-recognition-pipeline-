@@ -2,7 +2,6 @@ import io
 import os
 import logging
 import numpy as np
-from PIL import Image
 import cv2
 from sqlalchemy.orm import Session
 from sklearn.metrics.pairwise import cosine_similarity
@@ -22,7 +21,6 @@ cloudinary.config(
     secure=True,
 )
 
-# Singleton — loaded once at startup, reused forever
 _face_app = None
 
 
@@ -31,7 +29,7 @@ def get_face_app():
     if _face_app is None:
         from insightface.app import FaceAnalysis
         _face_app = FaceAnalysis(
-            name="buffalo_sc",        # lightweight ONNX model ~150MB RAM total
+            name="buffalo_sc",
             providers=["CPUExecutionProvider"],
         )
         _face_app.prepare(ctx_id=-1, det_size=(320, 320))
@@ -40,7 +38,6 @@ def get_face_app():
 
 
 def _bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
-    """Convert raw image bytes to a BGR numpy array for OpenCV/InsightFace."""
     arr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
@@ -49,34 +46,23 @@ def _bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
 
 
 def _get_embedding(image_bytes: bytes) -> np.ndarray:
-    """Detect face and return its 512-d embedding vector."""
     app = get_face_app()
     img = _bytes_to_cv2(image_bytes)
     faces = app.get(img)
-
     if not faces:
         raise ValueError("No face detected. Please upload a clear, well-lit frontal face photo.")
     if len(faces) > 1:
-        raise ValueError(
-            f"{len(faces)} faces detected. Please upload an image with exactly one face."
-        )
-
-    return faces[0].embedding  # shape: (512,) float32
+        raise ValueError(f"{len(faces)} faces detected. Please upload an image with exactly one face.")
+    return faces[0].embedding
 
 
 def enroll_face(image_bytes: bytes, label: str, user_id: str, db: Session) -> dict:
-    """
-    Enroll a face: extract embedding, upload image to Cloudinary,
-    save profile to PostgreSQL. All DB queries use ORM (parameterized — SQL-injection safe).
-    """
-    # Sanitize label — strip whitespace, cap length, prevent XSS
     label = label.strip()[:100]
     if not label:
         raise ValueError("Label / name cannot be empty.")
 
     embedding = _get_embedding(image_bytes)
 
-    # Upload to Cloudinary — stored under user's own folder
     upload_result = cloudinary.uploader.upload(
         io.BytesIO(image_bytes),
         folder=f"facevault/{user_id}",
@@ -89,11 +75,10 @@ def enroll_face(image_bytes: bytes, label: str, user_id: str, db: Session) -> di
     )
     image_url = upload_result["secure_url"]
 
-    # Parameterized insert via SQLAlchemy ORM — no raw SQL, no injection risk
     profile = FaceProfile(
         user_id=user_id,
         label=label,
-        embedding=embedding.tolist(),   # stored as JSON array in DB
+        embedding=embedding.tolist(),
         image_url=image_url,
     )
     db.add(profile)
@@ -112,13 +97,8 @@ def enroll_face(image_bytes: bytes, label: str, user_id: str, db: Session) -> di
 
 
 def recognize_face(image_bytes: bytes, user_id: str, db: Session) -> dict:
-    """
-    Recognize a face against all enrolled profiles for this user.
-    Uses cosine similarity on 512-d InsightFace embeddings.
-    """
     query_embedding = _get_embedding(image_bytes)
 
-    # Parameterized filter via ORM — safe from SQL injection
     profiles = (
         db.query(FaceProfile)
         .filter(FaceProfile.user_id == user_id)
@@ -133,7 +113,6 @@ def recognize_face(image_bytes: bytes, user_id: str, db: Session) -> dict:
 
     best_score = -1.0
     best_profile = None
-
     query_vec = query_embedding.reshape(1, -1).astype(np.float32)
 
     for profile in profiles:
@@ -143,14 +122,9 @@ def recognize_face(image_bytes: bytes, user_id: str, db: Session) -> dict:
             best_score = score
             best_profile = profile
 
-    # InsightFace buffalo_sc cosine similarity: >0.40 = reliable match
     THRESHOLD = 0.40
-
-     best_label = best_profile.label if best_profile else None
-logger.info(
-    f"Recognition result: best_score={best_score:.4f} label={best_label!r} user={user_id}"
-)
-
+    best_label = best_profile.label if best_profile else None
+    logger.info(f"Recognition result: best_score={best_score:.4f} label={best_label!r} user={user_id}")
 
     if best_score >= THRESHOLD:
         return {
