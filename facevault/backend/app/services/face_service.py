@@ -17,7 +17,7 @@ def _bytes_to_cv2(contents: bytes) -> np.ndarray:
     return img
 
 
-async def enroll_face(contents: bytes) -> Optional[List[float]]:
+def enroll_face(contents: bytes) -> Optional[List[float]]:
     try:
         img = _bytes_to_cv2(contents)
         embedding_objs = DeepFace.represent(
@@ -33,7 +33,7 @@ async def enroll_face(contents: bytes) -> Optional[List[float]]:
         return None
 
 
-async def recognize_face(
+def recognize_face(
     contents: bytes,
     enrolled: list,
 ) -> List[MatchResult]:
@@ -75,6 +75,5 @@ async def recognize_face(
         return []
 
 
-async def delete_face_data(face_id: str) -> None:
-    # Placeholder — actual deletion is handled in the route via DB + Cloudinary
+def delete_face_data(face_id: str) -> None:
     pass
