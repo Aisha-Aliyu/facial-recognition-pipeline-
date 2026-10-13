@@ -15,7 +15,7 @@ cloudinary==1.42.1
 pydantic==2.10.4
 pydantic-settings==2.7.0
 httpx==0.28.1
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 scipy==1.14.1
 scikit-learn==1.6.1
