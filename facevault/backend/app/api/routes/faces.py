@@ -3,7 +3,9 @@ from fastapi.concurrency import run_in_threadpool
 from slowapi import Limiter
 from app.core.client_ip import client_ip
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from typing import List
+import logging
 import uuid
 
 from app.db.database import get_db
@@ -17,6 +19,7 @@ from app.services.user_service import get_or_create_user
 
 router = APIRouter()
 limiter = Limiter(key_func=client_ip)
+logger = logging.getLogger(__name__)
 
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
@@ -112,15 +115,20 @@ async def recognize(
     except FaceImageError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    # A face was found, so record the attempt whether or not anything matched
+    # A face was found, so record the attempt whether or not anything matched.
+    # The audit entry is secondary: if saving it fails, the result is still returned.
     best = results[0] if results else None
-    db.add(RecognitionEvent(
-        user_id=current_user.id,
-        matched=best is not None,
-        label=best["label"] if best else None,
-        confidence=best["confidence"] if best else None,
-    ))
-    db.commit()
+    try:
+        db.add(RecognitionEvent(
+            user_id=str(current_user.id),
+            matched=best is not None,
+            label=best["label"] if best else None,
+            confidence=best["confidence"] if best else None,
+        ))
+        db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.warning(f"Could not save the recognition event: {e}")
 
     return results
 
@@ -137,13 +145,19 @@ async def list_logs(
     current_user: User = Depends(get_current_user),
 ):
     limit = max(1, min(limit, 100))
-    return (
-        db.query(RecognitionEvent)
-        .filter(RecognitionEvent.user_id == current_user.id)
-        .order_by(RecognitionEvent.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+    try:
+        return (
+            db.query(RecognitionEvent)
+            .filter(RecognitionEvent.user_id == str(current_user.id))
+            .order_by(RecognitionEvent.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+    except SQLAlchemyError as e:
+        # The table is missing or unreadable: show an empty log rather than an error
+        db.rollback()
+        logger.warning(f"Could not read recognition events: {e}")
+        return []
 
 
 # ──────────────────────────────────────────────

@@ -102,7 +102,14 @@ def recognize_face(image_bytes: bytes, enrolled: list) -> list:
 
     results = []
     for record in enrolled:
-        stored = _normalise(np.asarray(record.embedding, dtype=np.float32))
+        try:
+            stored = np.asarray(record.embedding, dtype=np.float32)
+        except (TypeError, ValueError):
+            continue
+        # Skip faces saved by an older model whose embeddings have a different size
+        if stored.shape != query.shape:
+            continue
+        stored = _normalise(stored)
         score = float(np.dot(query, stored))
         if score >= MATCH_THRESHOLD:
             results.append({
