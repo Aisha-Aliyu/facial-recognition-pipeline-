@@ -4,6 +4,25 @@ import { useEffect, useState } from "react";
 import { useVault, type VaultProfile } from "@/lib/vault";
 import Image from "next/image";
 
+// The grids below draw their thin lines with a background color showing through 1px
+// gaps, so an unfilled last row showed that color as a solid block. GridFiller covers
+// the empty cells with the page color. Its spans match grid-cols-2, md:grid-cols-3 and
+// lg:grid-cols-4, and the class names are written out in full so Tailwind generates them.
+const FILL_BASE = ["hidden", "block col-span-1"];
+const FILL_MD = ["md:hidden", "md:block md:col-span-1", "md:block md:col-span-2"];
+const FILL_LG = ["lg:hidden", "lg:block lg:col-span-1", "lg:block lg:col-span-2", "lg:block lg:col-span-3"];
+
+function GridFiller({ count }: { count: number }) {
+  const empty = (columns: number) => (columns - (count % columns)) % columns;
+  return (
+    <div
+      aria-hidden="true"
+      className={`${FILL_BASE[empty(2)]} ${FILL_MD[empty(3)]} ${FILL_LG[empty(4)]}`}
+      style={{ background: "var(--void)" }}
+    />
+  );
+}
+
 export default function ProfilesPage() {
   const vault = useVault();
   const [profiles, setProfiles] = useState<VaultProfile[]>([]);
@@ -61,6 +80,7 @@ export default function ProfilesPage() {
               <div style={{ height: "12px", background: "var(--muted)", width: "60%" }} />
             </div>
           ))}
+          <GridFiller count={8} />
         </div>
       ) : profiles.length === 0 ? (
         <div
@@ -112,6 +132,7 @@ export default function ProfilesPage() {
               </button>
             </div>
           ))}
+          <GridFiller count={profiles.length} />
         </div>
       )}
     </div>
