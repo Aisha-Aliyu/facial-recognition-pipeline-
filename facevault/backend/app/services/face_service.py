@@ -102,7 +102,15 @@ def recognize_face(image_bytes: bytes, enrolled: list) -> list:
 
     results = []
     for record in enrolled:
-        stored = _normalise(np.asarray(record.embedding, dtype=np.float32))
+        try:
+            stored = np.asarray(record.embedding, dtype=np.float32)
+        except (TypeError, ValueError):
+            continue
+        # Faces saved by the current model are unit length and the same size as the query.
+        # Anything else came from the older DeepFace model, and comparing it would give a
+        # meaningless score, so it's skipped. Re-enrolling those faces fixes them.
+        if stored.shape != query.shape or abs(float(np.linalg.norm(stored)) - 1.0) > 1e-3:
+            continue
         score = float(np.dot(query, stored))
         if score >= MATCH_THRESHOLD:
             results.append({

@@ -21,12 +21,18 @@ class FaceRecord(Base):
 
 
 class RecognitionEvent(Base):
-    """One recognition attempt, shown on the Audit page."""
+    """One recognition attempt, shown on the Audit page.
+
+    The ids here are plain text and user_id has no foreign key on purpose. Databases
+    set up by older versions of FaceVault store users.id as text while newer ones use
+    uuid, and Postgres refuses a foreign key between the two types. That refusal
+    stopped the whole API from starting, so this table doesn't depend on users.id's type.
+    """
 
     __tablename__ = "recognition_events"
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(64), nullable=False, index=True)
     matched = Column(Boolean, nullable=False, default=False)
     label = Column(String(100), nullable=True)
     confidence = Column(Float, nullable=True)

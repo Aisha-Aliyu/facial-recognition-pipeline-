@@ -31,13 +31,25 @@ def warmup_model():
         logger.warning(f"Model warm-up failed (non-fatal): {e}")
 
 
+def ensure_tables():
+    """Create any missing tables, one at a time, each in its own transaction.
+
+    A table that can't be created is logged and skipped, so one database problem can't
+    stop the whole API from starting. Tables that already exist are left untouched.
+    """
+    for table in Base.metadata.sorted_tables:
+        try:
+            table.create(bind=engine, checkfirst=True)
+        except Exception as e:
+            logger.error(f"Database setup: could not create table {table.name}: {e}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ──────────────────────────────────────────────
-    Base.metadata.create_all(bind=engine)
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, warmup_model)  
+    await loop.run_in_executor(None, ensure_tables)
+    await loop.run_in_executor(None, warmup_model)
     yield
     # ── Shutdown ─────────────────────────────────────────────
     logger.info("FaceVault API shutting down.")
