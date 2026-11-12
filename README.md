@@ -16,6 +16,10 @@ A production-grade facial recognition pipeline built with deep learning. Enroll 
 🔌 **API:** [facevault-backend.onrender.com/api/health](https://facevault-backend.onrender.com/api/health)  
 📖 **API Docs:** Available in development at `/api/docs`
 
+Tap Try It Free to use FaceVault without an account. Guest mode keeps the vault in your own browser: the API turns each photo into an embedding and stores nothing, and matching happens in the browser. Sign in to keep a private vault on the server, with an audit log.
+
+The API runs on Render's free plan, which sleeps after 15 minutes without visitors. The dashboard starts waking it as soon as it opens and shows when the face engine is ready. The first request after a quiet spell can take about a minute.
+
 ---
 
 ## What It Does
@@ -146,9 +150,11 @@ POST /api/auth/sync        — sync Clerk user to database
 
 Faces
 POST   /api/faces/enroll   — enroll a face (multipart: label + file)
-POST   /api/faces/recognize — recognize a face (multipart: file)
+POST   /api/faces/recognize — recognize a face (multipart: file), returns matches best first
+GET    /api/faces/logs      — recognition audit log (?limit=50)
 GET    /api/faces/          — list all enrolled faces
 DELETE /api/faces/{id}     — delete an enrolled face
+POST   /api/guest/embed     — guest mode: photo to embedding, nothing stored (multipart: file, purpose)
 
 Security
 	•	All database queries use SQLAlchemy ORM — parameterized, no raw SQL

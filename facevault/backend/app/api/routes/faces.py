@@ -8,10 +8,10 @@ import uuid
 
 from app.db.database import get_db
 from app.models.user import User
-from app.models.face import FaceRecord
-from app.schemas.face import FaceOut, MatchResult
+from app.models.face import FaceRecord, RecognitionEvent
+from app.schemas.face import FaceOut, MatchResult, LogOut
 from app.core.security import verify_clerk_token
-from app.services.face_service import enroll_face, recognize_face, delete_face_data
+from app.services.face_service import enroll_face, recognize_face, delete_face_data, FaceImageError
 from app.services.storage_service import upload_image, delete_image
 
 router = APIRouter()
@@ -60,19 +60,15 @@ async def enroll(
     if not label or len(label) > 100:
         raise HTTPException(status_code=400, detail="Label must be 1-100 characters.")
 
-    # Upload raw image to Cloudinary 
+    # Check the face first, so photos without one are never uploaded
+    try:
+        embedding = await run_in_threadpool(enroll_face, contents)
+    except FaceImageError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
     image_url, public_id = await upload_image(
         contents, folder=f"facevault/{current_user.clerk_id}"
     )
-
-    embedding = await run_in_threadpool(enroll_face, contents)
-
-    if embedding is None:
-        await delete_image(public_id)
-        raise HTTPException(
-            status_code=422,
-            detail="No face detected in the image. Please use a clear front-facing photo.",
-        )
 
     record = FaceRecord(
         id=str(uuid.uuid4()),
@@ -112,15 +108,43 @@ async def recognize(
             detail="No enrolled faces found. Enroll faces first.",
         )
 
-    results = await run_in_threadpool(recognize_face, contents, enrolled)
+    try:
+        results = await run_in_threadpool(recognize_face, contents, enrolled)
+    except FaceImageError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
-    if not results:
-        raise HTTPException(
-            status_code=422,
-            detail="No face detected in the uploaded image.",
-        )
+    # A face was found, so record the attempt whether or not anything matched
+    best = results[0] if results else None
+    db.add(RecognitionEvent(
+        user_id=current_user.id,
+        matched=best is not None,
+        label=best["label"] if best else None,
+        confidence=best["confidence"] if best else None,
+    ))
+    db.commit()
 
     return results
+
+
+# ──────────────────────────────────────────────
+# AUDIT LOG of recognition attempts
+# ──────────────────────────────────────────────
+@router.get("/logs", response_model=List[LogOut])
+@limiter.limit("100/hour")
+async def list_logs(
+    request: Request,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    limit = max(1, min(limit, 100))
+    return (
+        db.query(RecognitionEvent)
+        .filter(RecognitionEvent.user_id == current_user.id)
+        .order_by(RecognitionEvent.created_at.desc())
+        .limit(limit)
+        .all()
+    )
 
 
 # ──────────────────────────────────────────────

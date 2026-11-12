@@ -36,10 +36,9 @@ export default function Home() {
 
       {/* Nav */}
       <nav
-        className="relative z-10 flex items-center justify-between border-b"
+        className="relative z-10 flex items-center justify-between border-b gap-3 px-4 py-4 md:px-8 md:py-5"
         style={{
           borderColor: "var(--gold-border)",
-          padding: "20px 32px",
         }}
       >
         <div className="flex items-center gap-3">
@@ -122,7 +121,7 @@ export default function Home() {
               marginBottom: "40px",
             }}
           >
-            Deep Learning · TensorFlow · FaceNet512
+            InsightFace · ONNX Runtime · FastAPI
           </span>
         </div>
 
@@ -153,61 +152,61 @@ export default function Home() {
             lineHeight: 1.8,
           }}
         >
-          Enroll faces. Run recognition in milliseconds. Built on FaceNet512
-          with 99.6% accuracy on LFW benchmark. Production-ready. Privacy-first.
+          Enroll a face from one photo, then recognize that person in new photos.
+          Try it free without an account, or sign in to keep a private vault.
         </p>
 
         <div
-          className="flex items-center gap-4 opacity-0 animate-fade-up delay-4"
-          style={{ animationFillMode: "forwards", marginTop: "48px" }}
+          className="flex flex-wrap items-center justify-center gap-3 md:gap-4 opacity-0 animate-fade-up delay-4"
+          style={{ animationFillMode: "forwards", marginTop: "40px" }}
         >
           <Link
-            href="/sign-up"
-            className="text-xs tracking-widest uppercase transition-all duration-300 hover:opacity-90"
+            href="/dashboard"
+            className="text-xs tracking-widest uppercase transition-all duration-300 hover:opacity-90 px-8 py-4 md:px-10"
             style={{
               background: "var(--gold)",
               color: "var(--void)",
               fontWeight: 500,
-              padding: "16px 40px",
             }}
           >
-            Start Free
+            Try It Free
           </Link>
           <Link
-            href="#how-it-works"
-            className="text-xs tracking-widest uppercase border transition-all duration-300 hover:border-[#bfa27a] hover:text-[#bfa27a]"
+            href="/sign-up"
+            className="text-xs tracking-widest uppercase border transition-all duration-300 hover:border-[#bfa27a] hover:text-[#bfa27a] px-8 py-4 md:px-10"
             style={{
               borderColor: "var(--gold-border)",
               color: "var(--text-secondary)",
-              padding: "16px 40px",
             }}
           >
-            See How It Works
+            Create Account
           </Link>
         </div>
+        <p className="text-xs opacity-0 animate-fade-up delay-4" style={{ animationFillMode: "forwards", color: "var(--text-muted)", marginTop: "16px" }}>
+          No sign-up needed to try it. Guest faces stay in your browser.
+        </p>
 
         {/* Stats */}
         <div
-          className="grid grid-cols-3 opacity-0 animate-fade-up delay-5 border-t"
+          className="grid grid-cols-3 gap-4 md:gap-12 opacity-0 animate-fade-up delay-5 border-t"
           style={{
             borderColor: "var(--gold-border)",
             animationFillMode: "forwards",
-            marginTop: "80px",
-            paddingTop: "48px",
-            gap: "48px",
+            marginTop: "64px",
+            paddingTop: "36px",
             maxWidth: "640px",
             width: "100%",
           }}
         >
           {[
-            { value: "99.6%", label: "LFW Accuracy" },
+            { value: "SCRFD", label: "Face Detector" },
             { value: "512-d", label: "Embedding Vector" },
-            { value: "<200ms", label: "Avg Recognition" },
+            { value: "Cosine", label: "Similarity Match" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div
                 className="font-display"
-                style={{ fontSize: "2rem", color: "var(--gold)" }}
+                style={{ fontSize: "clamp(1.3rem, 5vw, 2rem)", color: "var(--gold)" }}
               >
                 {stat.value}
               </div>
@@ -225,7 +224,7 @@ export default function Home() {
       {/* How it works */}
       <section
         id="how-it-works"
-        style={{ padding: "120px 32px", maxWidth: "1100px", margin: "0 auto" }}
+        className="px-4 py-20 md:px-8 md:py-28" style={{ maxWidth: "1100px", margin: "0 auto" }}
       >
         <div className="text-center" style={{ marginBottom: "80px" }}>
           <span
@@ -254,7 +253,7 @@ export default function Home() {
             {
               step: "01",
               title: "Enroll",
-              desc: "Upload a clear photo. FaceNet512 extracts a 512-dimensional embedding vector and stores it securely in your vault.",
+              desc: "Upload a clear photo. InsightFace turns the face into a 512-number embedding and stores it in your vault.",
             },
             {
               step: "02",
@@ -310,8 +309,8 @@ export default function Home() {
           style={{ gap: "48px", maxWidth: "1100px", margin: "0 auto" }}
         >
           {[
-            "TensorFlow 2.17",
-            "FaceNet512",
+            "ONNX Runtime",
+            "InsightFace",
             "FastAPI",
             "Next.js 14",
             "PostgreSQL",
@@ -350,36 +349,45 @@ export default function Home() {
             marginTop: "16px",
           }}
         >
-          Free to start. No credit card required.
+          Free to use. No account needed to try it.
         </p>
-        <Link
-          href="/sign-up"
-          className="inline-block text-xs tracking-widest uppercase transition-all duration-300 hover:opacity-90"
-          style={{
-            background: "var(--gold)",
-            color: "var(--void)",
-            fontWeight: 500,
-            padding: "16px 48px",
-            marginTop: "40px",
-          }}
-        >
-          Get Started Now
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-3" style={{ marginTop: "36px" }}>
+          <Link
+            href="/dashboard"
+            className="inline-block text-xs tracking-widest uppercase transition-all duration-300 hover:opacity-90 px-10 py-4"
+            style={{
+              background: "var(--gold)",
+              color: "var(--void)",
+              fontWeight: 500,
+            }}
+          >
+            Try It Free
+          </Link>
+          <Link
+            href="/sign-up"
+            className="inline-block text-xs tracking-widest uppercase border transition-all duration-300 hover:border-[#bfa27a] hover:text-[#bfa27a] px-10 py-4"
+            style={{
+              borderColor: "var(--gold-border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Create Account
+          </Link>
+        </div>
       </section>
 
       {/* Footer */}
       <footer
-        className="relative z-10 border-t flex items-center justify-between"
+        className="relative z-10 border-t flex flex-col md:flex-row items-center justify-between gap-3 px-4 py-8 md:px-8 text-center"
         style={{
           borderColor: "var(--gold-border)",
-          padding: "32px 32px",
         }}
       >
         <span className="font-display text-lg" style={{ color: "var(--gold)" }}>
           FaceVault
         </span>
         <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Built with TensorFlow · FaceNet512 · FastAPI · Next.js
+          Built with InsightFace · FastAPI · Next.js
         </span>
       </footer>
     </main>

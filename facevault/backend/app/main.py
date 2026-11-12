@@ -10,7 +10,7 @@ import logging
 import os
 
 from app.core.config import get_settings
-from app.api.routes import faces, auth, health
+from app.api.routes import faces, auth, health, guest
 from app.db.database import engine, Base
 
 load_dotenv()
@@ -69,6 +69,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(faces.router, prefix="/api/faces", tags=["faces"])
+app.include_router(guest.router, prefix="/api/guest", tags=["guest"])
 
 
 if __name__ == "__main__":

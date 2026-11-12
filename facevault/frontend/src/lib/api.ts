@@ -70,16 +70,12 @@ export async function enrollFace(
 }
 
 // ── Recognize ─────────────────────────────────────────
+// Matches above the threshold, best first. An empty list means a face was found but
+// nobody in the vault matched.
 export async function recognizeFace(
   token: string,
   file: File
-): Promise<{
-  matched: boolean;
-  confidence: number | null;
-  label: string | null;
-  face_id: string | null;
-  message: string;
-}[]> {
+): Promise<{ id: string; label: string; image_url: string | null; confidence: number }[]> {
   const form = new FormData();
   form.append("file", file);
 
@@ -89,6 +85,23 @@ export async function recognizeFace(
       timeout: 120000, // explicit 2 min for ML processing
     });
     return res.data;
+  } catch (err) {
+    throw new Error(parseError(err));
+  }
+}
+
+// ── Guest ─────────────────────────────────────────────
+// Turns a photo into a face embedding without an account. The server stores nothing.
+export async function embedFace(file: File, purpose: "enroll" | "recognize"): Promise<number[]> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("purpose", purpose);
+
+  try {
+    const res = await api.post<{ embedding: number[] }>("/api/guest/embed", form, {
+      timeout: 120000,
+    });
+    return res.data.embedding;
   } catch (err) {
     throw new Error(parseError(err));
   }

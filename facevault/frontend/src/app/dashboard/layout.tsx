@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useUser, useAuth, UserButton } from "@clerk/nextjs";
 import { useEffect } from "react";
 import { syncUser } from "@/lib/api";
+import EngineStatus from "@/components/EngineStatus";
 
 const navItems = [
   {
@@ -65,12 +66,20 @@ const navItems = [
   },
 ];
 
+const signInLinkStyle: React.CSSProperties = {
+  border: "1px solid var(--gold-border)",
+  color: "var(--gold)",
+  padding: "8px 14px",
+  fontFamily: "DM Mono, monospace",
+};
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, isLoaded } = useUser();
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
+  const isGuest = isLoaded && !isSignedIn;
 
-    useEffect(() => {
+  useEffect(() => {
     if (!isLoaded || !user) return;
     (async () => {
       try {
@@ -83,24 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         });
       } catch {}
     })();
-  }, [isLoaded, user]);
-
-  // Pevents Render cold starts that cause timeouts
-  useEffect(() => {
-    const ping = async () => {
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/health`, {
-          method: "GET",
-          cache: "no-store",
-        });
-      } catch {}
-    };
-
-    ping(); 
-    const interval = setInterval(ping, 10 * 60 * 1000); // then every 10 min
-    return () => clearInterval(interval);
-  }, []);
-
+  }, [isLoaded, user, getToken]);
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--void)" }}>
@@ -119,11 +111,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}
       >
         {/* Logo */}
-        <div
+        <Link
+          href="/"
           className="flex items-center gap-3 border-b"
           style={{ borderColor: "var(--gold-border)", padding: "24px 20px" }}
         >
-          <svg width="24" height="24" viewBox="0 0 64 64" fill="none">
+          <svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true">
             <rect width="64" height="64" rx="14" fill="#1c1c1c" />
             <circle cx="32" cy="26" r="10" stroke="#bfa27a" strokeWidth="2.5" fill="none" />
             <path d="M10 54c0-12.15 9.85-22 22-22s22 9.85 22 22" stroke="#bfa27a" strokeWidth="2.5" strokeLinecap="round" fill="none" />
@@ -135,7 +128,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="font-display text-lg tracking-wider" style={{ color: "var(--gold)" }}>
             FaceVault
           </span>
-        </div>
+        </Link>
 
         {/* Nav */}
         <nav className="flex flex-col" style={{ padding: "16px 12px", gap: "4px", flex: 1 }}>
@@ -145,6 +138,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className="flex items-center gap-3 text-xs tracking-widest uppercase transition-all duration-200"
                 style={{
                   padding: "12px 12px",
@@ -167,15 +161,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className="flex items-center gap-3 border-t"
           style={{ borderColor: "var(--gold-border)", padding: "20px" }}
         >
-          <UserButton />
-          <div>
-            <div className="text-xs" style={{ color: "var(--text-primary)" }}>
-              {user?.firstName || "User"}
+          {isGuest ? (
+            <div className="flex flex-col gap-3" style={{ width: "100%" }}>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>
+                Browsing as a guest
+              </div>
+              <Link href="/sign-in" className="text-xs tracking-widest uppercase text-center" style={signInLinkStyle}>
+                Sign in
+              </Link>
             </div>
-            <div className="text-xs" style={{ color: "var(--text-muted)", marginTop: "2px" }}>
-              {user?.primaryEmailAddress?.emailAddress?.slice(0, 22)}
-            </div>
-          </div>
+          ) : (
+            <>
+              <UserButton />
+              <div style={{ minWidth: 0 }}>
+                <div className="text-xs" style={{ color: "var(--text-primary)" }}>
+                  {user?.firstName || "User"}
+                </div>
+                <div className="text-xs truncate" style={{ color: "var(--text-muted)", marginTop: "2px" }}>
+                  {user?.primaryEmailAddress?.emailAddress}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </aside>
 
@@ -185,20 +192,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         style={{
           background: "var(--surface)",
           borderColor: "var(--gold-border)",
-          padding: "16px 20px",
+          padding: "12px 16px",
+          paddingTop: "calc(12px + env(safe-area-inset-top))",
         }}
       >
-        <span className="font-display text-lg" style={{ color: "var(--gold)" }}>FaceVault</span>
-        <UserButton />
+        <Link href="/" className="font-display text-lg" style={{ color: "var(--gold)" }}>FaceVault</Link>
+        {isGuest ? (
+          <Link href="/sign-in" className="text-xs tracking-widest uppercase" style={signInLinkStyle}>
+            Sign in
+          </Link>
+        ) : (
+          <UserButton />
+        )}
       </div>
 
       {/* Mobile bottom nav */}
-      <div
+      <nav
+        aria-label="Dashboard"
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t"
         style={{
           background: "var(--surface)",
           borderColor: "var(--gold-border)",
-          padding: "12px 0 20px",
+          padding: "10px 4px",
+          paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
         }}
       >
         {navItems.map((item) => {
@@ -207,24 +223,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className="flex flex-col items-center gap-1"
-              style={{ color: active ? "var(--gold)" : "var(--text-muted)" }}
+              style={{ color: active ? "var(--gold)" : "var(--text-muted)", minWidth: "56px", padding: "4px 0" }}
             >
               {item.icon}
-              <span style={{ fontSize: "0.55rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              <span style={{ fontSize: "0.6rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 {item.label.split(" ")[0]}
               </span>
             </Link>
           );
         })}
-      </div>
+      </nav>
 
       {/* Main content */}
-      <main
-        className="flex-1"
-        style={{ padding: "32px", paddingTop: "80px", paddingBottom: "100px" }}
-      >
+      <main className="flex-1 min-w-0 px-4 pt-24 pb-32 md:px-10 md:pt-10 md:pb-12">
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+          <div className="flex flex-col gap-3" style={{ marginBottom: "28px" }}>
+            <EngineStatus />
+            {isGuest && (
+              <div
+                className="text-xs"
+                style={{
+                  border: "1px solid var(--gold-border)",
+                  background: "var(--surface)",
+                  color: "var(--text-secondary)",
+                  padding: "12px 14px",
+                  lineHeight: 1.6,
+                }}
+              >
+                You&apos;re trying FaceVault as a guest. Faces you enroll stay in this browser and
+                are never saved on our server.{" "}
+                <Link href="/sign-up" style={{ color: "var(--gold)", textDecoration: "underline" }}>
+                  Create an account
+                </Link>{" "}
+                to keep a private vault.
+              </div>
+            )}
+          </div>
           {children}
         </div>
       </main>

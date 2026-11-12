@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 
@@ -18,3 +18,18 @@ class MatchResult(BaseModel):
     label: str
     image_url: Optional[str] = None
     confidence: float
+
+
+class LogOut(BaseModel):
+    id: str
+    matched: bool
+    label: Optional[str] = None
+    confidence: Optional[float] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class EmbeddingOut(BaseModel):
+    embedding: List[float]
