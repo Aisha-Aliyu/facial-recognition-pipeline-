@@ -3,7 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from slowapi import Limiter
 from app.core.client_ip import client_ip
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, ProgrammingError
 from typing import List
 import logging
 import uuid
@@ -153,11 +153,13 @@ async def list_logs(
             .limit(limit)
             .all()
         )
-    except SQLAlchemyError as e:
-        # The table is missing or unreadable: show an empty log rather than an error
+    except ProgrammingError as e:
         db.rollback()
-        logger.warning(f"Could not read recognition events: {e}")
-        return []
+        # Only a missing table means "nothing logged yet". Anything else is a real error.
+        if getattr(e.orig, "pgcode", None) == "42P01":
+            logger.warning("recognition_events table is missing, so the log is empty")
+            return []
+        raise
 
 
 # ──────────────────────────────────────────────

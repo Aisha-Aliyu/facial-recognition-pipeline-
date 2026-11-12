@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
 from datetime import datetime
 
@@ -29,6 +29,12 @@ class LogOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+    # A database can hold this id as uuid or as text, so always send it as text
+    @field_validator("id", mode="before")
+    @classmethod
+    def id_as_text(cls, v):
+        return str(v)
 
 
 class EmbeddingOut(BaseModel):
