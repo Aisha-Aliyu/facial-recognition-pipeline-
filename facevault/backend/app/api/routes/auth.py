@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.core.client_ip import client_ip
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.user import User
@@ -8,7 +8,7 @@ from app.schemas.user import UserCreate, UserOut
 from app.core.security import verify_clerk_token
 
 router = APIRouter()
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=client_ip)
 
 
 @router.post("/sync", response_model=UserOut)

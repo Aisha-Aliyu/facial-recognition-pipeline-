@@ -33,7 +33,8 @@ export default function EngineStatus() {
         const res = await fetch(HEALTH_URL, { cache: "no-store", signal: controller.signal });
         const body = res.ok ? await res.json() : null;
         if (body?.status === "ok") {
-          if (!cancelled) setStatus("ready");
+          if (cancelled) return;
+          setStatus("ready");
           checks = 0;
           timer = setTimeout(check, KEEP_AWAKE_MS);
           return;

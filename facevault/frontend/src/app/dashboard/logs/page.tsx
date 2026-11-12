@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useVault, type VaultLog } from "@/lib/vault";
 
-const COLUMNS = "md:grid-cols-[1fr_110px_110px_180px]";
+// Table columns need about 520px, so they start at the wide breakpoint, below it rows stack
+const COLUMNS = "lg:grid-cols-[1fr_110px_110px_180px]";
 
 export default function LogsPage() {
   const vault = useVault();
@@ -59,9 +60,9 @@ export default function LogsPage() {
         </div>
       )}
 
-      {/* Column headings, shown from tablet width up */}
+      {/* Column headings, shown on wide screens */}
       <div
-        className={`hidden md:grid border-b gap-4 px-4 py-3 ${COLUMNS}`}
+        className={`hidden lg:grid border-b gap-4 px-4 py-3 ${COLUMNS}`}
         style={{ borderColor: "var(--gold-border)" }}
       >
         {["Identity", "Status", "Confidence", "Timestamp"].map((h) => (
@@ -94,7 +95,7 @@ export default function LogsPage() {
               >
                 {log.label || "Unknown face"}
               </span>
-              <span className="justify-self-end md:justify-self-start">
+              <span className="justify-self-end lg:justify-self-start">
                 <span
                   className="text-xs tracking-widest uppercase"
                   style={{
@@ -110,7 +111,7 @@ export default function LogsPage() {
               <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
                 {log.confidence != null ? `${log.confidence.toFixed(1)}%` : "No score"}
               </span>
-              <span className="text-xs justify-self-end md:justify-self-start" style={{ color: "var(--text-muted)" }}>
+              <span className="text-xs justify-self-end lg:justify-self-start" style={{ color: "var(--text-muted)" }}>
                 {new Date(log.created_at).toLocaleString()}
               </span>
             </li>

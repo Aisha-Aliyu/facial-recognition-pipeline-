@@ -1,6 +1,8 @@
+import io
 import logging
 import numpy as np
 import cv2
+from PIL import Image
 from sqlalchemy.orm import Session
 
 from app.models.face import FaceRecord
@@ -9,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 # Cosine similarity a match has to reach to count as the same person
 MATCH_THRESHOLD = 0.40
+# A small file can unpack into a huge image, so check the size before decoding it
+MAX_PIXELS = 25_000_000
+# Detection runs at 320px, so larger photos are scaled down to save memory
+MAX_SIDE = 1600
 
 _face_app = None
 
@@ -31,10 +37,23 @@ def get_face_app():
 
 
 def _bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as probe:
+            width, height = probe.size
+    except Exception:
+        raise FaceImageError("Could not read the image. Please upload a JPEG, PNG or WebP photo.")
+    if width * height > MAX_PIXELS:
+        raise FaceImageError("The image is too large. Please use a photo under 25 megapixels.")
+
     arr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
         raise FaceImageError("Could not read the image. Please upload a JPEG, PNG or WebP photo.")
+
+    longest = max(img.shape[:2])
+    if longest > MAX_SIDE:
+        scale = MAX_SIDE / longest
+        img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
     return img
 
 

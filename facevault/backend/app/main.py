@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from app.core.client_ip import client_ip
 from slowapi.errors import RateLimitExceeded
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
@@ -42,7 +43,7 @@ async def lifespan(app: FastAPI):
     logger.info("FaceVault API shutting down.")
 
 
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/hour"])
+limiter = Limiter(key_func=client_ip, default_limits=["100/hour"])
 
 app = FastAPI(
     title="FaceVault API",
@@ -65,6 +66,19 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+# Refuse oversized uploads before they are read. Photos are capped at 5MB, so anything
+# much bigger is either a mistake or an attempt to tie the server up.
+MAX_REQUEST_BYTES = 6 * 1024 * 1024
+
+
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    length = request.headers.get("content-length")
+    if length and length.isdigit() and int(length) > MAX_REQUEST_BYTES:
+        return JSONResponse(status_code=413, content={"detail": "File too large. Max 5MB."})
+    return await call_next(request)
+
 
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])

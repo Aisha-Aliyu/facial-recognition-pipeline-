@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Depends, UploadFile, File, Form
 from fastapi.concurrency import run_in_threadpool
 from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.core.client_ip import client_ip
 from sqlalchemy.orm import Session
 from typing import List
 import uuid
@@ -15,7 +15,7 @@ from app.services.face_service import enroll_face, recognize_face, delete_face_d
 from app.services.storage_service import upload_image, delete_image
 
 router = APIRouter()
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=client_ip)
 
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
