@@ -2,25 +2,18 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { useAuth } from "@clerk/nextjs";
 import Image from "next/image";
-import axios from "axios";
+import Link from "next/link";
+import { useVault, type VaultMatch } from "@/lib/vault";
 
-const API = process.env.NEXT_PUBLIC_API_URL;
-
-type Match = {
-  label: string;
-  confidence: number;
-  image_url: string | null;
-  face_id: string;
-};
+type Status = "idle" | "loading" | "matched" | "no-match" | "error";
 
 export default function RecognizePage() {
-  const { getToken } = useAuth();
+  const vault = useVault();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [status, setStatus] = useState<Status>("idle");
+  const [matches, setMatches] = useState<VaultMatch[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
 
   const onDrop = useCallback((accepted: File[]) => {
@@ -40,87 +33,75 @@ export default function RecognizePage() {
     maxSize: 5 * 1024 * 1024,
   });
 
+  const busy = status === "loading" || vault.mode === "loading";
+  const canRun = Boolean(file) && !busy;
+
   const handleRecognize = async () => {
     if (!file) return;
     setStatus("loading");
     setMatches([]);
     setErrorMsg("");
     try {
-      const token = await getToken();
-      if (!token) {
-        setStatus("error");
-        setErrorMsg("Session expired. Please sign in again.");
-        return;
-      }
-      const form = new FormData();
-      form.append("file", file);
-      const res = await axios.post<Match[]>(`${API}/api/faces/recognize`, form, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data: Match[] = res.data;
-      if (data.length === 0) {
-        setStatus("error");
-        setErrorMsg("No matches found above threshold.");
-      } else {
-        setStatus("success");
-        setMatches(data);
-      }
-    } catch {
+      const results = await vault.recognize(file);
+      setMatches(results);
+      setStatus(results.length > 0 ? "matched" : "no-match");
+    } catch (err: unknown) {
       setStatus("error");
-      setErrorMsg("Recognition failed. Ensure the image has a clear, visible face.");
+      setErrorMsg(err instanceof Error ? err.message : "Recognition failed. Try a clearer photo.");
     }
   };
 
+  const needsEnroll = status === "error" && errorMsg.toLowerCase().includes("enroll");
+
   return (
     <div style={{ maxWidth: "640px" }}>
-      <div style={{ marginBottom: "40px" }}>
+      <div style={{ marginBottom: "32px" }}>
         <p className="text-xs tracking-widest uppercase" style={{ color: "var(--gold)" }}>
           Recognize
         </p>
         <h1
           className="font-display"
-          style={{ fontSize: "2.4rem", color: "var(--text-primary)", marginTop: "8px" }}
+          style={{ fontSize: "clamp(1.8rem, 6vw, 2.4rem)", color: "var(--text-primary)", marginTop: "8px", lineHeight: 1.15 }}
         >
           Run Recognition
         </h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginTop: "8px" }}>
-          Upload a photo and match it against every enrolled face in your vault.
+        <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginTop: "8px", lineHeight: 1.7 }}>
+          Upload a photo and match its main face against every face in your vault.
         </p>
       </div>
 
       {/* Dropzone */}
       <div
         {...getRootProps()}
-        className="border cursor-pointer transition-all duration-200"
+        className="border cursor-pointer transition-all duration-200 px-4 py-8 md:py-12"
         style={{
           borderColor: isDragActive ? "var(--gold)" : "var(--gold-border)",
           borderStyle: "dashed",
           background: isDragActive ? "var(--gold-dim)" : "var(--surface)",
-          padding: "48px 24px",
           textAlign: "center",
-          marginBottom: "24px",
+          marginBottom: "20px",
         }}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} aria-label="Photo to recognize" />
         {preview ? (
           <div className="flex flex-col items-center gap-4">
             <div style={{ width: "120px", height: "120px", position: "relative", border: "1px solid var(--gold-border)" }}>
-              <Image src={preview} alt="query" fill style={{ objectFit: "cover" }} />
+              <Image src={preview} alt="Photo to recognize" fill unoptimized style={{ objectFit: "cover" }} />
             </div>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              {file?.name} · Click or drop to replace
+            <p className="text-xs" style={{ color: "var(--text-muted)", overflowWrap: "anywhere" }}>
+              {file?.name} · Tap or drop to replace
             </p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ color: "var(--gold)" }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ color: "var(--gold)" }} aria-hidden="true">
               <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" />
               <circle cx="12" cy="12" r="3" />
               <path d="M9 9l-2-2M15 9l2-2M9 15l-2 2M15 15l2 2" />
             </svg>
             <div>
               <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-                {isDragActive ? "Drop to analyze" : "Drag and drop or click to upload"}
+                {isDragActive ? "Drop to analyze" : "Tap to choose a photo, or drag one here"}
               </p>
               <p className="text-xs" style={{ color: "var(--text-muted)", marginTop: "6px" }}>
                 JPEG, PNG, WebP · Max 5MB
@@ -133,24 +114,43 @@ export default function RecognizePage() {
       {/* Button */}
       <button
         onClick={handleRecognize}
-        disabled={!file || status === "loading"}
+        disabled={!canRun}
         className="w-full text-xs tracking-widest uppercase transition-all duration-200"
         style={{
-          background: !file || status === "loading" ? "var(--muted)" : "var(--gold)",
+          background: canRun ? "var(--gold)" : "var(--muted)",
           color: "var(--void)",
           fontWeight: 500,
           padding: "16px",
-          cursor: !file || status === "loading" ? "not-allowed" : "pointer",
+          cursor: canRun ? "pointer" : "not-allowed",
           border: "none",
           fontFamily: "DM Mono, monospace",
         }}
       >
-        {status === "loading" ? "Analyzing..." : "Run Recognition"}
+        {status === "loading" ? "Analyzing…" : "Run Recognition"}
       </button>
+
+      {/* No match */}
+      {status === "no-match" && (
+        <div
+          role="status"
+          style={{
+            marginTop: "16px",
+            padding: "14px 16px",
+            background: "var(--surface)",
+            borderLeft: "2px solid var(--gold-border)",
+            color: "var(--text-secondary)",
+            fontSize: "0.8rem",
+            lineHeight: 1.6,
+          }}
+        >
+          No match. The face in this photo doesn&apos;t look like anyone in your vault.
+        </div>
+      )}
 
       {/* Error */}
       {status === "error" && (
         <div
+          role="alert"
           style={{
             marginTop: "16px",
             padding: "14px 16px",
@@ -158,37 +158,35 @@ export default function RecognizePage() {
             borderLeft: "2px solid #b43c3c",
             color: "#e07070",
             fontSize: "0.8rem",
+            lineHeight: 1.6,
           }}
         >
           {errorMsg}
+          {needsEnroll && (
+            <>
+              {" "}
+              <Link href="/dashboard/enroll" style={{ textDecoration: "underline" }}>
+                Go to Enroll
+              </Link>
+            </>
+          )}
         </div>
       )}
 
       {/* Results */}
       {matches.length > 0 && (
-        <div style={{ marginTop: "32px" }}>
-          <div
-            className="text-xs tracking-widest uppercase"
-            style={{ color: "var(--text-muted)", marginBottom: "16px" }}
-          >
+        <div style={{ marginTop: "28px" }}>
+          <div className="text-xs tracking-widest uppercase" style={{ color: "var(--text-muted)", marginBottom: "14px" }}>
             {matches.length} {matches.length === 1 ? "match" : "matches"} found
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "var(--gold-border)" }}>
+          <ol style={{ display: "flex", flexDirection: "column", gap: "1px", background: "var(--gold-border)" }}>
             {matches.map((m, i) => (
-              <div
-                key={m.face_id}
-                style={{
-                  background: "var(--surface)",
-                  padding: "20px 24px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "20px",
-                }}
+              <li
+                key={m.id}
+                className="flex items-center gap-3 md:gap-5 px-4 py-4 md:px-6 md:py-5"
+                style={{ background: "var(--surface)" }}
               >
-                <div
-                  className="font-display text-2xl"
-                  style={{ color: "var(--gold-dim)", minWidth: "32px" }}
-                >
+                <div className="font-display text-xl md:text-2xl" style={{ color: "var(--gold-dim)", minWidth: "20px" }}>
                   {i + 1}
                 </div>
 
@@ -198,6 +196,8 @@ export default function RecognizePage() {
                       src={m.image_url}
                       alt={m.label}
                       fill
+                      unoptimized={m.image_url.startsWith("data:")}
+                      sizes="48px"
                       style={{ objectFit: "cover", filter: "grayscale(30%)" }}
                     />
                   </div>
@@ -205,35 +205,26 @@ export default function RecognizePage() {
                   <div style={{ width: "48px", height: "48px", background: "var(--muted)", border: "1px solid var(--gold-border)", flexShrink: 0 }} />
                 )}
 
-                <div style={{ flex: 1 }}>
-                  <div className="font-display text-xl" style={{ color: "var(--text-primary)" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="font-display text-lg md:text-xl truncate" style={{ color: "var(--text-primary)" }}>
                     {m.label}
                   </div>
-                  <div
-                    className="text-xs tracking-widest uppercase"
-                    style={{ color: "var(--text-muted)", marginTop: "4px" }}
-                  >
+                  <div className="text-xs tracking-widest uppercase" style={{ color: "var(--text-muted)", marginTop: "4px" }}>
                     Confidence
                   </div>
                 </div>
 
-                <div style={{ textAlign: "right" }}>
-                  <div className="font-display text-2xl" style={{ color: "var(--gold)" }}>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div className="font-display text-xl md:text-2xl" style={{ color: "var(--gold)" }}>
                     {m.confidence.toFixed(1)}%
                   </div>
-                  <div style={{ width: "80px", height: "2px", background: "var(--muted)", marginTop: "6px" }}>
-                    <div
-                      style={{
-                        width: `${Math.min(m.confidence, 100)}%`,
-                        height: "2px",
-                        background: "var(--gold)",
-                      }}
-                    />
+                  <div style={{ width: "64px", height: "2px", background: "var(--muted)", marginTop: "6px", marginLeft: "auto" }}>
+                    <div style={{ width: `${Math.min(m.confidence, 100)}%`, height: "2px", background: "var(--gold)" }} />
                   </div>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       )}
     </div>
