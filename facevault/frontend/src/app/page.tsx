@@ -36,9 +36,10 @@ export default function Home() {
 
       {/* Nav */}
       <nav
-        className="relative z-10 flex items-center justify-between border-b gap-3 px-4 py-4 md:px-8 md:py-5"
+        className="relative z-10 flex items-center justify-between border-b"
         style={{
           borderColor: "var(--gold-border)",
+          padding: "20px 32px",
         }}
       >
         <div className="flex items-center gap-3">
@@ -157,43 +158,43 @@ export default function Home() {
         </p>
 
         <div
-          className="flex flex-wrap items-center justify-center gap-3 md:gap-4 opacity-0 animate-fade-up delay-4"
-          style={{ animationFillMode: "forwards", marginTop: "40px" }}
+          className="flex items-center gap-4 opacity-0 animate-fade-up delay-4"
+          style={{ animationFillMode: "forwards", marginTop: "48px" }}
         >
           <Link
             href="/dashboard"
-            className="text-xs tracking-widest uppercase transition-all duration-300 hover:opacity-90 px-8 py-4 md:px-10"
+            className="text-xs tracking-widest uppercase transition-all duration-300 hover:opacity-90"
             style={{
               background: "var(--gold)",
               color: "var(--void)",
               fontWeight: 500,
+              padding: "16px 40px",
             }}
           >
             Try It Free
           </Link>
           <Link
-            href="/sign-up"
-            className="text-xs tracking-widest uppercase border transition-all duration-300 hover:border-[#bfa27a] hover:text-[#bfa27a] px-8 py-4 md:px-10"
+            href="#how-it-works"
+            className="text-xs tracking-widest uppercase border transition-all duration-300 hover:border-[#bfa27a] hover:text-[#bfa27a]"
             style={{
               borderColor: "var(--gold-border)",
               color: "var(--text-secondary)",
+              padding: "16px 40px",
             }}
           >
-            Create Account
+            See How It Works
           </Link>
         </div>
-        <p className="text-xs opacity-0 animate-fade-up delay-4" style={{ animationFillMode: "forwards", color: "var(--text-muted)", marginTop: "16px" }}>
-          No sign-up needed to try it. Guest faces stay in your browser.
-        </p>
 
         {/* Stats */}
         <div
-          className="grid grid-cols-3 gap-4 md:gap-12 opacity-0 animate-fade-up delay-5 border-t"
+          className="grid grid-cols-3 opacity-0 animate-fade-up delay-5 border-t"
           style={{
             borderColor: "var(--gold-border)",
             animationFillMode: "forwards",
-            marginTop: "64px",
-            paddingTop: "36px",
+            marginTop: "80px",
+            paddingTop: "48px",
+            gap: "48px",
             maxWidth: "640px",
             width: "100%",
           }}
@@ -206,7 +207,7 @@ export default function Home() {
             <div key={stat.label} className="text-center">
               <div
                 className="font-display"
-                style={{ fontSize: "clamp(1.3rem, 5vw, 2rem)", color: "var(--gold)" }}
+                style={{ fontSize: "2rem", color: "var(--gold)" }}
               >
                 {stat.value}
               </div>
@@ -224,7 +225,7 @@ export default function Home() {
       {/* How it works */}
       <section
         id="how-it-works"
-        className="px-4 py-20 md:px-8 md:py-28" style={{ maxWidth: "1100px", margin: "0 auto" }}
+        style={{ padding: "120px 32px", maxWidth: "1100px", margin: "0 auto" }}
       >
         <div className="text-center" style={{ marginBottom: "80px" }}>
           <span
@@ -351,36 +352,27 @@ export default function Home() {
         >
           Free to use. No account needed to try it.
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-3" style={{ marginTop: "36px" }}>
-          <Link
-            href="/dashboard"
-            className="inline-block text-xs tracking-widest uppercase transition-all duration-300 hover:opacity-90 px-10 py-4"
-            style={{
-              background: "var(--gold)",
-              color: "var(--void)",
-              fontWeight: 500,
-            }}
-          >
-            Try It Free
-          </Link>
-          <Link
-            href="/sign-up"
-            className="inline-block text-xs tracking-widest uppercase border transition-all duration-300 hover:border-[#bfa27a] hover:text-[#bfa27a] px-10 py-4"
-            style={{
-              borderColor: "var(--gold-border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Create Account
-          </Link>
-        </div>
+        <Link
+          href="/dashboard"
+          className="inline-block text-xs tracking-widest uppercase transition-all duration-300 hover:opacity-90"
+          style={{
+            background: "var(--gold)",
+            color: "var(--void)",
+            fontWeight: 500,
+            padding: "16px 48px",
+            marginTop: "40px",
+          }}
+        >
+          Try It Free
+        </Link>
       </section>
 
       {/* Footer */}
       <footer
-        className="relative z-10 border-t flex flex-col md:flex-row items-center justify-between gap-3 px-4 py-8 md:px-8 text-center"
+        className="relative z-10 border-t flex items-center justify-between"
         style={{
           borderColor: "var(--gold-border)",
+          padding: "32px 32px",
         }}
       >
         <span className="font-display text-lg" style={{ color: "var(--gold)" }}>

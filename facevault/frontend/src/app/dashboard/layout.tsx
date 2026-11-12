@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useUser, useAuth, UserButton } from "@clerk/nextjs";
 import { useEffect } from "react";
 import { syncUser } from "@/lib/api";
-import EngineStatus from "@/components/EngineStatus";
 
 const navItems = [
   {
@@ -79,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { getToken, isSignedIn } = useAuth();
   const isGuest = isLoaded && !isSignedIn;
 
-  useEffect(() => {
+    useEffect(() => {
     if (!isLoaded || !user) return;
     (async () => {
       try {
@@ -92,7 +91,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         });
       } catch {}
     })();
-  }, [isLoaded, user, getToken]);
+  }, [isLoaded, user]);
+
+  // Pevents Render cold starts that cause timeouts
+  useEffect(() => {
+    const ping = async () => {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/health`, {
+          method: "GET",
+          cache: "no-store",
+        });
+      } catch {}
+    };
+
+    ping(); 
+    const interval = setInterval(ping, 10 * 60 * 1000); // then every 10 min
+    return () => clearInterval(interval);
+  }, []);
+
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--void)" }}>
@@ -111,12 +127,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}
       >
         {/* Logo */}
-        <Link
-          href="/"
+        <div
           className="flex items-center gap-3 border-b"
           style={{ borderColor: "var(--gold-border)", padding: "24px 20px" }}
         >
-          <svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 64 64" fill="none">
             <rect width="64" height="64" rx="14" fill="#1c1c1c" />
             <circle cx="32" cy="26" r="10" stroke="#bfa27a" strokeWidth="2.5" fill="none" />
             <path d="M10 54c0-12.15 9.85-22 22-22s22 9.85 22 22" stroke="#bfa27a" strokeWidth="2.5" strokeLinecap="round" fill="none" />
@@ -128,7 +143,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="font-display text-lg tracking-wider" style={{ color: "var(--gold)" }}>
             FaceVault
           </span>
-        </Link>
+        </div>
 
         {/* Nav */}
         <nav className="flex flex-col" style={{ padding: "16px 12px", gap: "4px", flex: 1 }}>
@@ -138,7 +153,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                aria-current={active ? "page" : undefined}
                 className="flex items-center gap-3 text-xs tracking-widest uppercase transition-all duration-200"
                 style={{
                   padding: "12px 12px",
@@ -173,12 +187,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ) : (
             <>
               <UserButton />
-              <div style={{ minWidth: 0 }}>
+              <div>
                 <div className="text-xs" style={{ color: "var(--text-primary)" }}>
                   {user?.firstName || "User"}
                 </div>
-                <div className="text-xs truncate" style={{ color: "var(--text-muted)", marginTop: "2px" }}>
-                  {user?.primaryEmailAddress?.emailAddress}
+                <div className="text-xs" style={{ color: "var(--text-muted)", marginTop: "2px" }}>
+                  {user?.primaryEmailAddress?.emailAddress?.slice(0, 22)}
                 </div>
               </div>
             </>
@@ -192,11 +206,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         style={{
           background: "var(--surface)",
           borderColor: "var(--gold-border)",
-          padding: "12px 16px",
-          paddingTop: "calc(12px + env(safe-area-inset-top))",
+          padding: "16px 20px",
         }}
       >
-        <Link href="/" className="font-display text-lg" style={{ color: "var(--gold)" }}>FaceVault</Link>
+        <span className="font-display text-lg" style={{ color: "var(--gold)" }}>FaceVault</span>
         {isGuest ? (
           <Link href="/sign-in" className="text-xs tracking-widest uppercase" style={signInLinkStyle}>
             Sign in
@@ -207,14 +220,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Mobile bottom nav */}
-      <nav
-        aria-label="Dashboard"
+      <div
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t"
         style={{
           background: "var(--surface)",
           borderColor: "var(--gold-border)",
-          padding: "10px 4px",
-          paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
+          padding: "12px 0 20px",
         }}
       >
         {navItems.map((item) => {
@@ -223,44 +234,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link
               key={item.href}
               href={item.href}
-              aria-current={active ? "page" : undefined}
               className="flex flex-col items-center gap-1"
-              style={{ color: active ? "var(--gold)" : "var(--text-muted)", minWidth: "56px", padding: "4px 0" }}
+              style={{ color: active ? "var(--gold)" : "var(--text-muted)" }}
             >
               {item.icon}
-              <span style={{ fontSize: "0.6rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span style={{ fontSize: "0.55rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>
                 {item.label.split(" ")[0]}
               </span>
             </Link>
           );
         })}
-      </nav>
+      </div>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 px-4 pt-24 pb-32 md:px-10 md:pt-10 md:pb-12">
+      <main
+        className="flex-1"
+        style={{ padding: "32px", paddingTop: "80px", paddingBottom: "100px" }}
+      >
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div className="flex flex-col gap-3" style={{ marginBottom: "28px" }}>
-            <EngineStatus />
-            {isGuest && (
-              <div
-                className="text-xs"
-                style={{
-                  border: "1px solid var(--gold-border)",
-                  background: "var(--surface)",
-                  color: "var(--text-secondary)",
-                  padding: "12px 14px",
-                  lineHeight: 1.6,
-                }}
-              >
-                You&apos;re trying FaceVault as a guest. Faces you enroll stay in this browser and
-                are never saved on our server.{" "}
-                <Link href="/sign-up" style={{ color: "var(--gold)", textDecoration: "underline" }}>
-                  Create an account
-                </Link>{" "}
-                to keep a private vault.
-              </div>
-            )}
-          </div>
+          {isGuest && (
+            <div
+              className="text-xs"
+              style={{
+                border: "1px solid var(--gold-border)",
+                background: "var(--surface)",
+                color: "var(--text-secondary)",
+                padding: "14px 16px",
+                lineHeight: 1.6,
+                marginBottom: "32px",
+              }}
+            >
+              You&apos;re trying FaceVault as a guest. Faces you enroll stay in this browser and
+              are never saved on our server.{" "}
+              <Link href="/sign-up" style={{ color: "var(--gold)", textDecoration: "underline" }}>
+                Create an account
+              </Link>{" "}
+              to keep a private vault.
+            </div>
+          )}
           {children}
         </div>
       </main>

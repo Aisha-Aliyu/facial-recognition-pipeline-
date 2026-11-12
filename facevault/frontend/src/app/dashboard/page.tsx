@@ -5,6 +5,7 @@ import Link from "next/link";
 
 export default function DashboardPage() {
   const { user, isSignedIn } = useUser();
+  const isGuest = isSignedIn === false;
 
   const cards = [
     {
@@ -59,24 +60,25 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: "32px" }}>
+      <div style={{ marginBottom: "48px" }}>
         <p className="text-xs tracking-widest uppercase" style={{ color: "var(--gold)" }}>
           Dashboard
         </p>
         <h1
           className="font-display"
-          style={{ fontSize: "clamp(2rem, 7vw, 2.8rem)", color: "var(--text-primary)", marginTop: "8px", lineHeight: 1.15 }}
+          style={{ fontSize: "2.8rem", color: "var(--text-primary)", marginTop: "8px" }}
         >
-          {isSignedIn
-            ? `Welcome back${user?.firstName ? `, ${user.firstName}` : ""}.`
-            : "Try FaceVault."}
+          {isGuest
+            ? "Try FaceVault."
+            : `Welcome back${user?.firstName ? `, ${user.firstName}` : ""}.`}
         </h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginTop: "8px", lineHeight: 1.7 }}>
-          {isSignedIn
-            ? "Your facial recognition vault is ready."
-            : "Enroll a face, then run recognition on a different photo of the same person."}
+        <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginTop: "8px" }}>
+          {isGuest
+            ? "Enroll a face, then run recognition on a different photo of the same person."
+            : "Your facial recognition vault is ready."}
         </p>
       </div>
+
       {/* Cards */}
       <div
         className="grid grid-cols-1 md:grid-cols-2 gap-px"
@@ -86,10 +88,11 @@ export default function DashboardPage() {
           <Link
             key={card.href}
             href={card.href}
-            className="flex flex-col group transition-all duration-200 p-6 md:p-8"
+            className="flex flex-col group transition-all duration-200"
             style={{
               background: "var(--surface)",
-              gap: "16px",
+              padding: "36px 32px",
+              gap: "20px",
             }}
           >
             <div
@@ -131,8 +134,8 @@ export default function DashboardPage() {
 
       {/* Info strip */}
       <div
-        className="flex flex-wrap gap-6 md:gap-8 border-t"
-        style={{ borderColor: "var(--gold-border)", marginTop: "40px", paddingTop: "28px" }}
+        className="flex flex-wrap gap-8 border-t"
+        style={{ borderColor: "var(--gold-border)", marginTop: "48px", paddingTop: "32px" }}
       >
         {[
           { label: "Model", value: "InsightFace" },

@@ -2,9 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import Image from "next/image";
-import Link from "next/link";
 import { useVault } from "@/lib/vault";
+import Image from "next/image";
 
 export default function EnrollPage() {
   const vault = useVault();
@@ -30,8 +29,8 @@ export default function EnrollPage() {
     maxSize: 5 * 1024 * 1024,
   });
 
-  const busy = status === "loading" || vault.mode === "loading";
-  const canSubmit = Boolean(file) && Boolean(label.trim()) && !busy;
+  // Wait for sign-in status so faces go to the right vault
+  const disabled = !file || !label.trim() || status === "loading" || vault.mode === "loading";
 
   const handleSubmit = async () => {
     if (!file || !label.trim()) return;
@@ -42,50 +41,63 @@ export default function EnrollPage() {
       setStatus("success");
       setMessage(
         vault.mode === "guest"
-          ? `Enrolled ${result.label}. Saved in this browser only.`
-          : `Enrolled ${result.label}.`
+          ? `Enrolled successfully: ${result.label}. Saved in this browser only.`
+          : `Enrolled successfully: ${result.label}`
       );
       setFile(null);
       setPreview(null);
       setLabel("");
     } catch (err: unknown) {
       setStatus("error");
-      setMessage(
-        err instanceof Error ? err.message : "Enrollment failed. Make sure the image has a clear face."
-      );
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Enrollment failed. Make sure the image has a clear face.";
+      setMessage(msg);
     }
   };
 
   return (
     <div style={{ maxWidth: "640px" }}>
       {/* Header */}
-      <div style={{ marginBottom: "32px" }}>
-        <p className="text-xs tracking-widest uppercase" style={{ color: "var(--gold)" }}>
+      <div style={{ marginBottom: "40px" }}>
+        <p
+          className="text-xs tracking-widest uppercase"
+          style={{ color: "var(--gold)" }}
+        >
           Enroll
         </p>
         <h1
           className="font-display"
-          style={{ fontSize: "clamp(1.8rem, 6vw, 2.4rem)", color: "var(--text-primary)", marginTop: "8px", lineHeight: 1.15 }}
+          style={{ fontSize: "2.4rem", color: "var(--text-primary)", marginTop: "8px" }}
         >
           Add a Face Profile
         </h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginTop: "8px", lineHeight: 1.7 }}>
-          Upload a clear, well-lit photo with one face. InsightFace turns it into a
-          512-number face embedding that recognition compares against.
+        <p
+          style={{
+            color: "var(--text-secondary)",
+            fontSize: "0.875rem",
+            marginTop: "8px",
+          }}
+        >
+          Upload a clear, well-lit photo. One face per image. InsightFace will
+          extract the embedding.
         </p>
       </div>
 
       {/* Label input */}
-      <div style={{ marginBottom: "20px" }}>
+      <div style={{ marginBottom: "24px" }}>
         <label
-          htmlFor="face-label"
           className="text-xs tracking-widest uppercase"
-          style={{ color: "var(--text-muted)", display: "block", marginBottom: "10px" }}
+          style={{
+            color: "var(--text-muted)",
+            display: "block",
+            marginBottom: "10px",
+          }}
         >
           Label / Name
         </label>
         <input
-          id="face-label"
           type="text"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
@@ -104,16 +116,17 @@ export default function EnrollPage() {
       {/* Dropzone */}
       <div
         {...getRootProps()}
-        className="border cursor-pointer transition-all duration-200 px-4 py-8 md:py-12"
+        className="border cursor-pointer transition-all duration-200"
         style={{
           borderColor: isDragActive ? "var(--gold)" : "var(--gold-border)",
           borderStyle: "dashed",
           background: isDragActive ? "var(--gold-dim)" : "var(--surface)",
+          padding: "48px 24px",
           textAlign: "center",
-          marginBottom: "20px",
+          marginBottom: "24px",
         }}
       >
-        <input {...getInputProps()} aria-label="Face photo" />
+        <input {...getInputProps()} />
 
         {preview ? (
           <div className="flex flex-col items-center gap-4">
@@ -125,24 +138,42 @@ export default function EnrollPage() {
                 border: "1px solid var(--gold-border)",
               }}
             >
-              <Image src={preview} alt="Selected photo" fill unoptimized style={{ objectFit: "cover" }} />
+              <Image
+                src={preview}
+                alt="preview"
+                fill
+                style={{ objectFit: "cover" }}
+              />
             </div>
-            <p className="text-xs" style={{ color: "var(--text-muted)", overflowWrap: "anywhere" }}>
-              {file?.name} · Tap or drop to replace
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {file?.name} · Click or drop to replace
             </p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ color: "var(--gold)" }} aria-hidden="true">
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              style={{ color: "var(--gold)" }}
+            >
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
             <div>
               <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-                {isDragActive ? "Drop the image here" : "Tap to choose a photo, or drag one here"}
+                {isDragActive
+                  ? "Drop the image here"
+                  : "Drag and drop or click to upload"}
               </p>
-              <p className="text-xs" style={{ color: "var(--text-muted)", marginTop: "6px" }}>
+              <p
+                className="text-xs"
+                style={{ color: "var(--text-muted)", marginTop: "6px" }}
+              >
                 JPEG, PNG, WebP · Max 5MB · One face
               </p>
             </div>
@@ -153,44 +184,39 @@ export default function EnrollPage() {
       {/* Submit button */}
       <button
         onClick={handleSubmit}
-        disabled={!canSubmit}
+        disabled={disabled}
         className="w-full text-xs tracking-widest uppercase transition-all duration-200"
         style={{
-          background: canSubmit ? "var(--gold)" : "var(--muted)",
+          background: disabled ? "var(--muted)" : "var(--gold)",
           color: "var(--void)",
           fontWeight: 500,
           padding: "16px",
-          cursor: canSubmit ? "pointer" : "not-allowed",
+          cursor: disabled ? "not-allowed" : "pointer",
           border: "none",
           fontFamily: "DM Mono, monospace",
         }}
       >
-        {status === "loading" ? "Reading the face…" : "Enroll Face"}
+        {status === "loading" ? "Extracting Embedding…" : "Enroll Face"}
       </button>
 
       {/* Status message */}
       {message && (
         <div
-          role={status === "error" ? "alert" : "status"}
           className="text-xs"
           style={{
             marginTop: "16px",
             padding: "14px 16px",
-            lineHeight: 1.6,
-            background: status === "success" ? "rgba(191,162,122,0.1)" : "rgba(180,60,60,0.1)",
-            borderLeft: `2px solid ${status === "success" ? "var(--gold)" : "#b43c3c"}`,
+            background:
+              status === "success"
+                ? "rgba(191,162,122,0.1)"
+                : "rgba(180,60,60,0.1)",
+            borderLeft: `2px solid ${
+              status === "success" ? "var(--gold)" : "#b43c3c"
+            }`,
             color: status === "success" ? "var(--gold)" : "#e07070",
           }}
         >
           {message}
-          {status === "success" && (
-            <>
-              {" "}
-              <Link href="/dashboard/recognize" style={{ textDecoration: "underline" }}>
-                Now run recognition
-              </Link>
-            </>
-          )}
         </div>
       )}
     </div>
