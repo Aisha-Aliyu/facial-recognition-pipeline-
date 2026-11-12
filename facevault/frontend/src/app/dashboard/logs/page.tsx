@@ -36,9 +36,10 @@ export default function LogsPage() {
         </p>
       </div>
 
+      {/* Column headings: wide screens only. On phones each row stacks onto two lines. */}
       <div
-        className="grid border-b"
-        style={{ gridTemplateColumns: "1fr 100px 100px 160px", borderColor: "var(--gold-border)", padding: "10px 16px", gap: "16px" }}
+        className="hidden lg:grid lg:grid-cols-[1fr_100px_100px_160px] border-b"
+        style={{ borderColor: "var(--gold-border)", padding: "10px 16px", gap: "16px" }}
       >
         {["Identity", "Status", "Confidence", "Timestamp"].map((h) => (
           <span key={h} className="text-xs tracking-widest uppercase" style={{ color: "var(--text-muted)" }}>{h}</span>
@@ -58,19 +59,19 @@ export default function LogsPage() {
           {logs.map((log, i) => (
             <div
               key={log.id}
-              className="grid border-b"
+              className="grid grid-cols-[1fr_auto] lg:grid-cols-[1fr_100px_100px_160px] border-b"
               style={{
-                gridTemplateColumns: "1fr 100px 100px 160px",
                 borderColor: "var(--gold-border)",
                 padding: "16px",
-                gap: "16px",
+                columnGap: "16px",
+                rowGap: "8px",
                 background: i % 2 === 0 ? "transparent" : "var(--surface)",
               }}
             >
-              <span className="text-sm font-display" style={{ color: log.matched ? "var(--text-primary)" : "var(--text-muted)" }}>
+              <span className="text-sm font-display" style={{ color: log.matched ? "var(--text-primary)" : "var(--text-muted)", minWidth: 0, overflowWrap: "anywhere" }}>
                 {log.label || "—"}
               </span>
-              <span>
+              <span className="justify-self-end lg:justify-self-start">
                 <span
                   className="text-xs tracking-widest uppercase"
                   style={{
@@ -85,7 +86,7 @@ export default function LogsPage() {
               <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
                 {log.confidence != null ? `${log.confidence.toFixed(1)}%` : "—"}
               </span>
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              <span className="text-xs justify-self-end lg:justify-self-start" style={{ color: "var(--text-muted)" }}>
                 {new Date(log.created_at).toLocaleString()}
               </span>
             </div>
