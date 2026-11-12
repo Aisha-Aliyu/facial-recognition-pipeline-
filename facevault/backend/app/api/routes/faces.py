@@ -13,6 +13,7 @@ from app.schemas.face import FaceOut, MatchResult, LogOut
 from app.core.security import verify_clerk_token
 from app.services.face_service import enroll_face, recognize_face, delete_face_data, FaceImageError
 from app.services.storage_service import upload_image, delete_image
+from app.services.user_service import get_or_create_user
 
 router = APIRouter()
 limiter = Limiter(key_func=client_ip)
@@ -22,12 +23,10 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 
 async def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+    # Creates the user on first use, so nothing depends on the dashboard's sync call
+    # having worked, which can fail while the server is waking up
     payload = await verify_clerk_token(request)
-    clerk_id = payload.get("sub")
-    user = db.query(User).filter(User.clerk_id == clerk_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found. Call /auth/sync first.")
-    return user
+    return get_or_create_user(db, payload)
 
 
 def validate_image(file: UploadFile):
