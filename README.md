@@ -49,7 +49,7 @@ You'll need Node.js 18 or newer, Python 3.11, a PostgreSQL database (Neon works 
 
 ```bash
 git clone https://github.com/Aisha-Aliyu/facial-recognition-pipeline-.git
-cd facial-recognition-pipeline-
+cd facial-recognition-pipeline-/facevault
 ```
 
 ### Backend
@@ -61,7 +61,7 @@ source venv/bin/activate      # on Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Create `backend/.env`:
+Create a `.env` file in `backend`:
 
 ```env
 DATABASE_URL=postgresql://user:password@host:5432/facevault
@@ -84,12 +84,14 @@ In development, the API docs are at http://localhost:8000/api/docs.
 
 ### Frontend
 
+In a second terminal, from the `facevault` folder:
+
 ```bash
 cd frontend
 npm install
 ```
 
-Create `frontend/.env.local`:
+Create a `.env.local` file in `frontend`:
 
 ```env
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
@@ -131,17 +133,17 @@ POST   /api/guest/embed        guest mode: photo to embedding, nothing stored (m
 Backend on Render:
 
 1. Connect the GitHub repo to Render.
-2. Set the Root Directory to `backend`.
+2. Set the Root Directory to `facevault/backend`.
 3. Set the Build Command to `pip install -r requirements.txt`.
 4. Set the Start Command to `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
-5. Add the environment variables from `backend/.env`.
+5. Add the environment variables from `facevault/backend/.env`.
 6. Set `ALLOWED_ORIGINS` to your Vercel frontend URL.
 
 Frontend on Vercel:
 
 1. Import the GitHub repo into Vercel.
-2. Set the Root Directory to `frontend`.
-3. Add the environment variables from `frontend/.env.local`.
+2. Set the Root Directory to `facevault/frontend`.
+3. Add the environment variables from `facevault/frontend/.env.local`.
 4. Set `NEXT_PUBLIC_API_URL` to your Render backend URL.
 
 ## License
